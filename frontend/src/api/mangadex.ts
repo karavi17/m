@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const MANGADEX_BASE_URL = 'https://api.mangadex.org';
+const MANGADEX_BASE_URL = 'https://m-production-8dff.up.railway.app/api';
 const MANGADEX_IMAGE_URL = 'https://uploads.mangadex.org';
 
 const api = axios.create({
@@ -12,7 +12,7 @@ const api = axios.create({
   }
 });
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+const BACKEND_URL = 'https://m-production-8dff.up.railway.app';
 
 export const searchManga = async (query: string, limit = 20, offset = 0) => {
   try {
