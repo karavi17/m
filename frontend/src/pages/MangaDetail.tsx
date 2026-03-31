@@ -1,16 +1,37 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getMangaById, getMangaChapters, getCoverUrl } from '../api/mangadex';
 import { Manga, Chapter } from '../types/mangadex';
-import { Loader2, AlertCircle, BookOpen, Clock, Tag } from 'lucide-react';
+import { Loader2, AlertCircle, BookOpen, Clock, Tag, ChevronRight, ChevronLeft, Play, FastForward } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function MangaDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [manga, setManga] = useState<Manga | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [totalChapters, setTotalChapters] = useState(0);
+  const [jumpChapter, setJumpChapter] = useState('');
+  const CHAPTERS_LIMIT = 100;
+  const chapterListRef = useRef<HTMLDivElement>(null);
+
+  const fetchChapters = async (newOffset: number) => {
+    if (!id) return;
+    try {
+      const chaptersData = await getMangaChapters(id, newOffset, CHAPTERS_LIMIT);
+      setChapters(chaptersData.data);
+      setTotalChapters(chaptersData.total);
+      setOffset(newOffset);
+      if (chapterListRef.current) {
+        chapterListRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch chapters:', err);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -20,10 +41,11 @@ export function MangaDetail() {
       try {
         const [mangaData, chaptersData] = await Promise.all([
           getMangaById(id),
-          getMangaChapters(id)
+          getMangaChapters(id, 0, CHAPTERS_LIMIT)
         ]);
         setManga(mangaData.data);
         setChapters(chaptersData.data);
+        setTotalChapters(chaptersData.total);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch manga details');
       } finally {
@@ -32,6 +54,42 @@ export function MangaDetail() {
     };
     fetchData();
   }, [id]);
+
+  const handleJumpToChapter = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!jumpChapter) return;
+    
+    // Find chapter in current list or redirect
+    const foundChapter = chapters.find(c => c.attributes.chapter === jumpChapter);
+    if (foundChapter) {
+      navigate(`/chapter/${foundChapter.id}`);
+    } else {
+      // In a real app, you'd search for the chapter ID by number
+      alert(`Chapter ${jumpChapter} not found in current list. Please use pagination to find it.`);
+    }
+  };
+
+  const readFirst = () => {
+    if (chapters.length > 0) {
+      // MangaDex feed is sorted by chapter desc by default in our API call
+      // So the last chapter in the last page would be the first
+      // For simplicity, let's just go to the last chapter of the current list if it's the last page
+      // Or we could fetch with order[chapter]=asc
+      const lastChapter = [...chapters].sort((a, b) => 
+        parseFloat(a.attributes.chapter || '0') - parseFloat(b.attributes.chapter || '0')
+      )[0];
+      if (lastChapter) navigate(`/chapter/${lastChapter.id}`);
+    }
+  };
+
+  const readLast = () => {
+    if (chapters.length > 0) {
+      const latestChapter = [...chapters].sort((a, b) => 
+        parseFloat(b.attributes.chapter || '0') - parseFloat(a.attributes.chapter || '0')
+      )[0];
+      if (latestChapter) navigate(`/chapter/${latestChapter.id}`);
+    }
+  };
 
   if (loading) {
     return (
@@ -114,14 +172,72 @@ export function MangaDetail() {
               {description}
             </p>
           </div>
+
+          <div className="mt-8 flex flex-wrap gap-4">
+            <button 
+              onClick={readFirst}
+              className="flex-1 min-w-[140px] bg-primary hover:bg-primary/80 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-primary/20"
+            >
+              <Play className="w-5 h-5" />
+              Read First
+            </button>
+            <button 
+              onClick={readLast}
+              className="flex-1 min-w-[140px] bg-secondary hover:bg-secondary/80 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all border border-gray-700"
+            >
+              <FastForward className="w-5 h-5" />
+              Read Latest
+            </button>
+            
+            <form onSubmit={handleJumpToChapter} className="flex-1 min-w-[200px] flex gap-2">
+              <input 
+                type="number" 
+                step="0.1"
+                placeholder="Ch. No."
+                value={jumpChapter}
+                onChange={(e) => setJumpChapter(e.target.value)}
+                className="flex-1 bg-secondary border border-gray-700 rounded-xl px-4 py-2 focus:outline-none focus:border-primary transition-colors text-white"
+              />
+              <button 
+                type="submit"
+                className="bg-primary px-6 py-2 rounded-xl font-bold hover:bg-primary/80 transition-all"
+              >
+                Go
+              </button>
+            </form>
+          </div>
         </motion.div>
       </div>
 
-      <div className="border-t border-secondary pt-12">
-        <h2 className="text-3xl font-bold mb-8 flex items-center gap-3">
-          Chapters
-          <span className="text-sm font-normal text-gray-500">({chapters.length} available)</span>
-        </h2>
+      <div ref={chapterListRef} className="border-t border-secondary pt-12">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          <h2 className="text-3xl font-bold flex items-center gap-3">
+            Chapters
+            <span className="text-sm font-normal text-gray-500">({totalChapters} available)</span>
+          </h2>
+          
+          {totalChapters > CHAPTERS_LIMIT && (
+            <div className="flex items-center gap-2">
+              <button 
+                disabled={offset === 0}
+                onClick={() => fetchChapters(Math.max(0, offset - CHAPTERS_LIMIT))}
+                className="p-2 rounded-lg bg-secondary hover:bg-primary/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="text-sm font-medium px-4">
+                Page {Math.floor(offset / CHAPTERS_LIMIT) + 1} of {Math.ceil(totalChapters / CHAPTERS_LIMIT)}
+              </span>
+              <button 
+                disabled={offset + CHAPTERS_LIMIT >= totalChapters}
+                onClick={() => fetchChapters(offset + CHAPTERS_LIMIT)}
+                className="p-2 rounded-lg bg-secondary hover:bg-primary/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {chapters.map((chapter, index) => (
