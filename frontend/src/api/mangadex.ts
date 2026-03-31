@@ -4,10 +4,7 @@ const BACKEND_API_URL = 'https://m-production-8dff.up.railway.app/api';
 const MANGADEX_IMAGE_URL = 'https://uploads.mangadex.org';
 
 const api = axios.create({
-  baseURL: BACKEND_API_URL,
-  headers: {
-    'User-Agent': 'MangaFlow Reader v1.0.0'
-  }
+  baseURL: BACKEND_API_URL
 });
 
 export const searchManga = async (query: string, limit = 20, offset = 0) => {
