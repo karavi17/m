@@ -6,28 +6,24 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Enhanced CORS configuration
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
-}));
-
+// Enable CORS for ALL requests
+app.use(cors());
 app.use(express.json());
 
 const MANGADEX_API_URL = 'https://api.mangadex.org';
 
 app.get('/', (req, res) => {
-  res.send('Backend is running and CORS is enabled!');
+  res.send('Backend is running and CORS is enabled! (v2)');
 });
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Backend is healthy' });
 });
 
-// Robust Proxy for all MangaDex API calls
-app.all('/api/:path(*)', async (req, res) => {
-  const targetPath = req.params.path;
+// Powerful Proxy Route for all MangaDex API calls
+app.all('/api/*', async (req, res) => {
+  // Extract the path after /api/
+  const targetPath = req.url.replace(/^\/api\//, '');
   const url = `${MANGADEX_API_URL}/${targetPath}`;
   
   console.log(`[Proxy] ${req.method} ${url}`);
@@ -42,10 +38,11 @@ app.all('/api/:path(*)', async (req, res) => {
         'User-Agent': 'MangaFlow Reader v1.0.0',
         'X-Client-ID': 'personal-client-f6189cad-2a17-4ca6-bba5-69bf4389c447-2143a032',
         'Accept': 'application/json'
-      },
-      timeout: 15000 // 15s timeout
+      }
     });
     
+    // Set CORS headers manually just in case
+    res.header('Access-Control-Allow-Origin', '*');
     res.status(response.status).json(response.data);
   } catch (error) {
     console.error(`[Proxy Error] ${error.message}`);
@@ -57,7 +54,7 @@ app.all('/api/:path(*)', async (req, res) => {
   }
 });
 
-// Listening on 0.0.0.0 is important for Railway
+// Listen on all network interfaces (important for Cloud Platforms)
 app.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running on port: ${port}`);
+  console.log(`Server is running and listening on 0.0.0.0:${port}`);
 });
