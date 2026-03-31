@@ -61,14 +61,12 @@ export function MangaDetail() {
     
     try {
       // Find chapter by number across all chapters
-      const chaptersData = await getMangaChapters(id, 0, 10, {
+      const chaptersData = await getMangaChapters(id, 0, 1, {
         chapter: jumpChapter
       });
       
       if (chaptersData.data.length > 0) {
-        // Find exact match or first result
-        const exactMatch = chaptersData.data.find((c: any) => c.attributes.chapter === jumpChapter) || chaptersData.data[0];
-        navigate(`/chapter/${exactMatch.id}`);
+        navigate(`/chapter/${chaptersData.data[0].id}`);
       } else {
         alert(`Chapter ${jumpChapter} not found.`);
       }

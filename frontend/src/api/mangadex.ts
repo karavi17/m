@@ -63,15 +63,6 @@ export const getMangaChapters = async (id: string, offset = 0, limit = 100, para
   return response.data;
 };
 
-export const getChapterById = async (chapterId: string) => {
-  const response = await api.get(`/chapter/${chapterId}`, {
-    params: {
-      'includes[]': ['manga']
-    }
-  });
-  return response.data;
-};
-
 export const getChapterImages = async (chapterId: string) => {
   // Use backend proxy for at-home server info
   const response = await axios.get(`${BACKEND_URL}/proxy/at-home/server/${chapterId}`);

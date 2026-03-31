@@ -17,7 +17,7 @@ export function Navbar() {
     <nav className="bg-background border-b border-secondary sticky top-0 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2 text-primary font-bold text-2xl tracking-tight">
-          <img src="/logo.png" alt="MangaFlow" className="w-8 h-8 object-contain" />
+          <img src="/logo.png" alt="MangaFlow" className="w-10 h-10 object-contain" />
           <span>MangaFlow</span>
         </Link>
 
