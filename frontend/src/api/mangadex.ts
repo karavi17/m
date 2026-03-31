@@ -48,18 +48,29 @@ export const getMangaById = async (id: string) => {
   return response.data;
 };
 
-export const getMangaChapters = async (id: string, offset = 0, limit = 100) => {
+export const getMangaChapters = async (id: string, offset = 0, limit = 100, order: 'asc' | 'desc' = 'desc') => {
   const response = await api.get(`/manga/${id}/feed`, {
     params: {
       limit,
       offset,
       'translatedLanguage[]': ['en'],
-      'order[chapter]': 'desc',
+      'order[chapter]': order,
       'contentRating[]': ['safe', 'suggestive'],
       'includeEmptyPages': 0
     }
   });
   return response.data;
+};
+
+export const getFirstAndLastChapter = async (id: string) => {
+  const [first, last] = await Promise.all([
+    getMangaChapters(id, 0, 1, 'asc'),
+    getMangaChapters(id, 0, 1, 'desc')
+  ]);
+  return {
+    first: first.data[0] as Chapter | undefined,
+    last: last.data[0] as Chapter | undefined
+  };
 };
 
 export const getChapterImages = async (chapterId: string) => {

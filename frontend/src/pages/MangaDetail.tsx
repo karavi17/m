@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getMangaById, getMangaChapters, getCoverUrl } from '../api/mangadex';
+import { getMangaById, getMangaChapters, getCoverUrl, getFirstAndLastChapter } from '../api/mangadex';
 import { Manga, Chapter } from '../types/mangadex';
 import { Loader2, AlertCircle, BookOpen, Clock, Tag, ChevronRight, ChevronLeft, Play, FastForward } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,6 +10,8 @@ export function MangaDetail() {
   const navigate = useNavigate();
   const [manga, setManga] = useState<Manga | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [firstChapter, setFirstChapter] = useState<Chapter | null>(null);
+  const [lastChapter, setLastChapter] = useState<Chapter | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
@@ -39,13 +41,16 @@ export function MangaDetail() {
       setLoading(true);
       setError(null);
       try {
-        const [mangaData, chaptersData] = await Promise.all([
+        const [mangaData, chaptersData, firstLastData] = await Promise.all([
           getMangaById(id),
-          getMangaChapters(id, 0, CHAPTERS_LIMIT)
+          getMangaChapters(id, 0, CHAPTERS_LIMIT),
+          getFirstAndLastChapter(id)
         ]);
         setManga(mangaData.data);
         setChapters(chaptersData.data);
         setTotalChapters(chaptersData.total);
+        setFirstChapter(firstLastData.first || null);
+        setLastChapter(firstLastData.last || null);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch manga details');
       } finally {
@@ -70,11 +75,10 @@ export function MangaDetail() {
   };
 
   const readFirst = () => {
-    if (chapters.length > 0) {
-      // MangaDex feed is sorted by chapter desc by default in our API call
-      // So the last chapter in the last page would be the first
-      // For simplicity, let's just go to the last chapter of the current list if it's the last page
-      // Or we could fetch with order[chapter]=asc
+    if (firstChapter) {
+      navigate(`/chapter/${firstChapter.id}`);
+    } else if (chapters.length > 0) {
+      // Fallback if firstChapter is not loaded
       const lastChapter = [...chapters].sort((a, b) => 
         parseFloat(a.attributes.chapter || '0') - parseFloat(b.attributes.chapter || '0')
       )[0];
@@ -83,7 +87,10 @@ export function MangaDetail() {
   };
 
   const readLast = () => {
-    if (chapters.length > 0) {
+    if (lastChapter) {
+      navigate(`/chapter/${lastChapter.id}`);
+    } else if (chapters.length > 0) {
+      // Fallback if lastChapter is not loaded
       const latestChapter = [...chapters].sort((a, b) => 
         parseFloat(b.attributes.chapter || '0') - parseFloat(a.attributes.chapter || '0')
       )[0];
