@@ -21,9 +21,9 @@ app.get('/api/health', (req, res) => {
 });
 
 // Powerful Proxy Route for all MangaDex API calls
-app.all('/api/*', async (req, res) => {
-  // Extract the path after /api/
-  const targetPath = req.url.replace(/^\/api\//, '');
+app.use('/api', async (req, res) => {
+  // Extract the path from the URL
+  const targetPath = req.url.replace(/^\//, '');
   const url = `${MANGADEX_API_URL}/${targetPath}`;
   
   console.log(`[Proxy] ${req.method} ${url}`);
