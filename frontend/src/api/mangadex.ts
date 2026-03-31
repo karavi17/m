@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Chapter } from '../types/mangadex';
 
 const BACKEND_URL = 'https://m-production-8dff.up.railway.app';
 const BACKEND_API_URL = `${BACKEND_URL}/api`;
