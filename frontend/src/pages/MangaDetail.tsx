@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getMangaById, getMangaChapters, getCoverUrl, getFirstAndLastChapter } from '../api/mangadex';
+import { getMangaById, getMangaChapters, getCoverUrl } from '../api/mangadex';
 import { Manga, Chapter } from '../types/mangadex';
 import { Loader2, AlertCircle, BookOpen, Clock, Tag, ChevronRight, ChevronLeft, Play, FastForward } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -10,8 +10,6 @@ export function MangaDetail() {
   const navigate = useNavigate();
   const [manga, setManga] = useState<Manga | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [firstChapter, setFirstChapter] = useState<Chapter | null>(null);
-  const [lastChapter, setLastChapter] = useState<Chapter | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
@@ -41,16 +39,13 @@ export function MangaDetail() {
       setLoading(true);
       setError(null);
       try {
-        const [mangaData, chaptersData, firstLastData] = await Promise.all([
+        const [mangaData, chaptersData] = await Promise.all([
           getMangaById(id),
-          getMangaChapters(id, 0, CHAPTERS_LIMIT),
-          getFirstAndLastChapter(id)
+          getMangaChapters(id, 0, CHAPTERS_LIMIT)
         ]);
         setManga(mangaData.data);
         setChapters(chaptersData.data);
         setTotalChapters(chaptersData.total);
-        setFirstChapter(firstLastData.first || null);
-        setLastChapter(firstLastData.last || null);
       } catch (err: any) {
         setError(err.message || 'Failed to fetch manga details');
       } finally {
@@ -60,41 +55,54 @@ export function MangaDetail() {
     fetchData();
   }, [id]);
 
-  const handleJumpToChapter = (e: React.FormEvent) => {
+  const handleJumpToChapter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!jumpChapter) return;
+    if (!jumpChapter || !id) return;
     
-    // Find chapter in current list or redirect
-    const foundChapter = chapters.find(c => c.attributes.chapter === jumpChapter);
-    if (foundChapter) {
-      navigate(`/chapter/${foundChapter.id}`);
-    } else {
-      // In a real app, you'd search for the chapter ID by number
-      alert(`Chapter ${jumpChapter} not found in current list. Please use pagination to find it.`);
+    try {
+      // Find chapter by number across all chapters
+      const chaptersData = await getMangaChapters(id, 0, 1, {
+        chapter: jumpChapter
+      });
+      
+      if (chaptersData.data.length > 0) {
+        navigate(`/chapter/${chaptersData.data[0].id}`);
+      } else {
+        alert(`Chapter ${jumpChapter} not found.`);
+      }
+    } catch (err: any) {
+      console.error('Failed to find chapter:', err);
+      alert('Error searching for chapter');
     }
   };
 
-  const readFirst = () => {
-    if (firstChapter) {
-      navigate(`/chapter/${firstChapter.id}`);
-    } else if (chapters.length > 0) {
-      // Fallback if firstChapter is not loaded
-      const lastChapter = [...chapters].sort((a, b) => 
-        parseFloat(a.attributes.chapter || '0') - parseFloat(b.attributes.chapter || '0')
-      )[0];
-      if (lastChapter) navigate(`/chapter/${lastChapter.id}`);
+  const readFirst = async () => {
+    if (!id) return;
+    try {
+      // Fetch the first chapter (ascending order)
+      const chaptersData = await getMangaChapters(id, 0, 1, {
+        'order[chapter]': 'asc'
+      });
+      if (chaptersData.data.length > 0) {
+        navigate(`/chapter/${chaptersData.data[0].id}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch first chapter:', err);
     }
   };
 
-  const readLast = () => {
-    if (lastChapter) {
-      navigate(`/chapter/${lastChapter.id}`);
-    } else if (chapters.length > 0) {
-      // Fallback if lastChapter is not loaded
-      const latestChapter = [...chapters].sort((a, b) => 
-        parseFloat(b.attributes.chapter || '0') - parseFloat(a.attributes.chapter || '0')
-      )[0];
-      if (latestChapter) navigate(`/chapter/${latestChapter.id}`);
+  const readLast = async () => {
+    if (!id) return;
+    try {
+      // Fetch the last chapter (descending order)
+      const chaptersData = await getMangaChapters(id, 0, 1, {
+        'order[chapter]': 'desc'
+      });
+      if (chaptersData.data.length > 0) {
+        navigate(`/chapter/${chaptersData.data[0].id}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch last chapter:', err);
     }
   };
 

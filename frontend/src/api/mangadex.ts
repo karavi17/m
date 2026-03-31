@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { Chapter } from '../types/mangadex';
 
 const BACKEND_URL = 'https://m-production-8dff.up.railway.app';
 const BACKEND_API_URL = `${BACKEND_URL}/api`;
@@ -49,29 +48,19 @@ export const getMangaById = async (id: string) => {
   return response.data;
 };
 
-export const getMangaChapters = async (id: string, offset = 0, limit = 100, order: 'asc' | 'desc' = 'desc') => {
+export const getMangaChapters = async (id: string, offset = 0, limit = 100, params = {}) => {
   const response = await api.get(`/manga/${id}/feed`, {
     params: {
       limit,
       offset,
       'translatedLanguage[]': ['en'],
-      'order[chapter]': order,
+      'order[chapter]': 'desc',
       'contentRating[]': ['safe', 'suggestive'],
-      'includeEmptyPages': 0
+      'includeEmptyPages': 0,
+      ...params
     }
   });
   return response.data;
-};
-
-export const getFirstAndLastChapter = async (id: string) => {
-  const [first, last] = await Promise.all([
-    getMangaChapters(id, 0, 1, 'asc'),
-    getMangaChapters(id, 0, 1, 'desc')
-  ]);
-  return {
-    first: first.data[0] as Chapter | undefined,
-    last: last.data[0] as Chapter | undefined
-  };
 };
 
 export const getChapterImages = async (chapterId: string) => {
