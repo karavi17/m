@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const BACKEND_API_URL = 'https://m-production-8dff.up.railway.app/api';
-const MANGADEX_IMAGE_URL = 'https://uploads.mangadex.org';
+const BACKEND_URL = 'https://m-production-8dff.up.railway.app';
+const BACKEND_API_URL = `${BACKEND_URL}/api`;
 
 const api = axios.create({
   baseURL: BACKEND_API_URL
@@ -63,16 +63,22 @@ export const getMangaChapters = async (id: string, offset = 0, limit = 100) => {
 };
 
 export const getChapterImages = async (chapterId: string) => {
-  const response = await api.get(`/at-home/server/${chapterId}`);
+  // Use backend proxy for at-home server info
+  const response = await axios.get(`${BACKEND_URL}/proxy/at-home/server/${chapterId}`);
   const { baseUrl, chapter } = response.data;
   const hash = chapter.hash;
   const pages = chapter.data;
   
-  return pages.map((page: string) => `${baseUrl}/data/${hash}/${page}`);
+  // Proxy each image through the backend to avoid CORS/Referer issues
+  return pages.map((page: string) => {
+    const originalUrl = `${baseUrl}/data/${hash}/${page}`;
+    return `${BACKEND_URL}/proxy/image?url=${encodeURIComponent(originalUrl)}`;
+  });
 };
 
 export const getCoverUrl = (mangaId: string, fileName: string) => {
-  return `${MANGADEX_IMAGE_URL}/covers/${mangaId}/${fileName}`;
+  // Use backend proxy for covers
+  return `${BACKEND_URL}/proxy/cover/${mangaId}/${fileName}`;
 };
 
 export default api;
