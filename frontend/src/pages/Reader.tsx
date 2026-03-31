@@ -113,7 +113,7 @@ export function Reader() {
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
           </button>
           <Link to="/" className="p-2 hover:bg-secondary rounded-full transition-colors">
-            <Home className="w-5 h-5" />
+            <img src="/logo.png" alt="Home" className="w-6 h-6 object-contain" />
           </Link>
         </div>
 
