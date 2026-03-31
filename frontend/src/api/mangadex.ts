@@ -1,25 +1,17 @@
 import axios from 'axios';
 
-const MANGADEX_BASE_URL = 'https://m-production-8dff.up.railway.app/api';
+const BACKEND_API_URL = 'https://m-production-8dff.up.railway.app/api';
 const MANGADEX_IMAGE_URL = 'https://uploads.mangadex.org';
 
 const api = axios.create({
-  baseURL: MANGADEX_BASE_URL,
+  baseURL: BACKEND_API_URL,
   headers: {
-    'User-Agent': 'MangaFlow Reader v1.0.0',
-    // Personal Client ID provided by user
-    'X-Client-ID': 'personal-client-f6189cad-2a17-4ca6-bba5-69bf4389c447-2143a032'
+    'User-Agent': 'MangaFlow Reader v1.0.0'
   }
 });
 
-const BACKEND_URL = 'https://m-production-8dff.up.railway.app';
-
 export const searchManga = async (query: string, limit = 20, offset = 0) => {
   try {
-    const response = await fetch(`${BACKEND_URL}/manga/${encodeURIComponent(query)}`);
-    return await response.json();
-  } catch (error) {
-    console.error('Backend search failed, falling back to direct API:', error);
     const response = await api.get('/manga', {
       params: {
         title: query,
@@ -31,6 +23,9 @@ export const searchManga = async (query: string, limit = 20, offset = 0) => {
       }
     });
     return response.data;
+  } catch (error) {
+    console.error('Search failed:', error);
+    throw error;
   }
 };
 
