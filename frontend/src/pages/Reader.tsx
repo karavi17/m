@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getChapterImages } from '../api/mangadex';
+import { getChapterImages, getChapterById, getMangaChapters } from '../api/mangadex';
 import { Loader2, AlertCircle, ArrowLeft, ArrowRight, Home } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,6 +10,8 @@ export function Reader() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
+  const [nextChapterId, setNextChapterId] = useState<string | null>(null);
+  const [prevChapterId, setPrevChapterId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -18,8 +20,41 @@ export function Reader() {
       setLoading(true);
       setError(null);
       try {
-        const data = await getChapterImages(id);
-        setImages(data);
+        const [imagesData, chapterData] = await Promise.all([
+          getChapterImages(id),
+          getChapterById(id)
+        ]);
+        setImages(imagesData);
+
+        const mangaId = chapterData.data.relationships.find((r: any) => r.type === 'manga')?.id;
+        const currentChapterNum = parseFloat(chapterData.data.attributes.chapter || '0');
+
+        if (mangaId) {
+          // Fetch next chapter
+          const nextChapters = await getMangaChapters(mangaId, 0, 1, {
+            'order[chapter]': 'asc',
+            offset: 0,
+            limit: 1,
+            translatedLanguage: ['en'],
+            'chapter': (currentChapterNum + 0.1).toString(), // This is a bit hacky, let's use a better way
+          });
+          
+          // Actually, let's just fetch the whole feed or at least the neighbors
+          const allChapters = await getMangaChapters(mangaId, 0, 100, {
+            'order[chapter]': 'asc',
+            'translatedLanguage[]': ['en']
+          });
+
+          const currentIndex = allChapters.data.findIndex((c: any) => c.id === id);
+          if (currentIndex !== -1) {
+            if (currentIndex < allChapters.data.length - 1) {
+              setNextChapterId(allChapters.data[currentIndex + 1].id);
+            }
+            if (currentIndex > 0) {
+              setPrevChapterId(allChapters.data[currentIndex - 1].id);
+            }
+          }
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to fetch chapter images');
       } finally {
@@ -27,6 +62,7 @@ export function Reader() {
       }
     };
     fetchData();
+    window.scrollTo(0, 0);
   }, [id]);
 
   useEffect(() => {
@@ -87,11 +123,25 @@ export function Reader() {
           <span className="text-gray-400">{images.length}</span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button className="hidden md:flex items-center gap-2 bg-primary px-4 py-1.5 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity">
-            Next Chapter
-            <ArrowRight className="w-4 h-4" />
-          </button>
+        <div className="flex items-center gap-2">
+          {prevChapterId && (
+            <button 
+              onClick={() => navigate(`/chapter/${prevChapterId}`)}
+              className="flex items-center gap-2 bg-secondary px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-primary/20 transition-all"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden md:inline">Prev</span>
+            </button>
+          )}
+          {nextChapterId && (
+            <button 
+              onClick={() => navigate(`/chapter/${nextChapterId}`)}
+              className="flex items-center gap-2 bg-primary px-4 py-1.5 rounded-lg text-sm font-bold hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
+            >
+              <span className="hidden md:inline">Next</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -122,12 +172,30 @@ export function Reader() {
 
       <div className="py-20 text-center flex flex-col items-center gap-6 border-t border-secondary mt-12">
         <p className="text-gray-400 font-medium">End of Chapter</p>
-        <button 
-          onClick={() => navigate(-1)}
-          className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/20"
-        >
-          Return to Manga Detail
-        </button>
+        <div className="flex flex-wrap justify-center gap-4">
+          {prevChapterId && (
+            <button 
+              onClick={() => navigate(`/chapter/${prevChapterId}`)}
+              className="bg-secondary text-white px-8 py-3 rounded-full font-bold hover:scale-105 transition-transform border border-gray-700"
+            >
+              Previous Chapter
+            </button>
+          )}
+          <button 
+            onClick={() => navigate(-1)}
+            className="bg-secondary text-white px-8 py-3 rounded-full font-bold hover:scale-105 transition-transform border border-gray-700"
+          >
+            Manga Detail
+          </button>
+          {nextChapterId && (
+            <button 
+              onClick={() => navigate(`/chapter/${nextChapterId}`)}
+              className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/20"
+            >
+              Next Chapter
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
